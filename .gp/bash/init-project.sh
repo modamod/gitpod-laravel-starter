@@ -5,7 +5,6 @@
 # Project specific initialization.
 
 # Load logger
-. .gp/bash/workspace-init-logger.sh
 
 # BEGIN example code block - migrate database
 # . .gp/bash/spinner.sh # COMMENT: Load spinner
@@ -133,7 +132,12 @@ install_snipeit () {
   mysql -u root -p --execute="CREATE DATABASE snipeit;GRANT ALL PRIVILEGES ON snipeit.* TO snipeit@localhost IDENTIFIED BY '$mysqluserpw';"
 
   echo "* Cloning Snipe-IT from github to the web directory."
-  log "git clone https://github.com/modamod/snipe-it $APP_PATH"
+  rm -rf /tmp/snipe-it
+
+  git clone https://github.com/modamod/snipe-it /tmp/snipe-it
+
+  cd /tmp/snipe-it && rm -rf .git/
+  cp -rf /tmp/snipe-it/* $APP_PATH
 
   echo "* Configuring .env file."
   cp "$APP_PATH/.env.example" "$APP_PATH/.env"
@@ -172,13 +176,6 @@ install_snipeit () {
 
 
 
-
-rename_default_vhost () {
-    log "mv /etc/apache2/sites-enabled/000-default.conf /etc/apache2/sites-enabled/111-default.conf"
-    log "mv /etc/apache2/sites-enabled/snipeit.conf /etc/apache2/sites-enabled/000-snipeit.conf"
-}
-
-
 if [[ -f /etc/debian_version || -f /etc/lsb-release ]]; then
   distro="$(lsb_release -is)"
   version="$(lsb_release -rs)"
@@ -215,7 +212,6 @@ readonly fqdn="$(hostname --fqdn)"
 mysqluserpw="$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16; echo)"
 
 
-  ubuntu)
 # Install for Ubuntu 18.04
 tzone=$(cat /etc/timezone)
 
@@ -225,23 +221,6 @@ progress
 
 echo "* Installing Apache httpd, PHP, MariaDB and other requirements."
 PACKAGES="mariadb-server mariadb-client apache2 libapache2-mod-php php php-mcrypt php-curl php-mysql php-gd php-ldap php-zip php-mbstring php-xml php-bcmath curl git unzip"
-install_packages
-
-echo "* Configuring Apache."
-create_virtualhost
-log "phpenmod mcrypt"
-log "phpenmod mbstring"
-log "a2enmod rewrite"
-log "a2ensite $APP_NAME.conf"
-rename_default_vhost
-
-set_hosts
-
-echo "* Starting MariaDB."
-log "systemctl start mariadb.service"
-
-echo "* Securing MariaDB."
-/usr/bin/mysql_secure_installation
 
 install_snipeit
 
